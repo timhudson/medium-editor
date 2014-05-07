@@ -160,8 +160,6 @@ var meditor = {};
             };
         },
 
-
-
         getElement: function getElement() {
             var selection = window.getSelection(),
                 range, current, parent,
