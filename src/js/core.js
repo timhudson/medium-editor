@@ -1,4 +1,4 @@
-/*global module, console*/
+/*global module, console, meditor*/
 
 function MediumEditor(elements, options) {
     'use strict';
@@ -23,68 +23,6 @@ if (typeof module === 'object') {
             }
         }
         return b;
-    }
-
-    // http://stackoverflow.com/questions/5605401/insert-link-in-contenteditable-element
-    // by Tim Down
-    function saveSelection() {
-        var i,
-            len,
-            ranges,
-            sel = window.getSelection();
-        if (sel.getRangeAt && sel.rangeCount) {
-            ranges = [];
-            for (i = 0, len = sel.rangeCount; i < len; i += 1) {
-                ranges.push(sel.getRangeAt(i));
-            }
-            return ranges;
-        }
-        return null;
-    }
-
-    function restoreSelection(savedSel) {
-        var i,
-            len,
-            sel = window.getSelection();
-        if (savedSel) {
-            sel.removeAllRanges();
-            for (i = 0, len = savedSel.length; i < len; i += 1) {
-                sel.addRange(savedSel[i]);
-            }
-        }
-    }
-
-    // http://stackoverflow.com/questions/1197401/how-can-i-get-the-element-the-caret-is-in-with-javascript-when-using-contentedi
-    // by You
-    function getSelectionStart() {
-        var node = document.getSelection().anchorNode,
-            startNode = (node && node.nodeType === 3 ? node.parentNode : node);
-        return startNode;
-    }
-
-    // http://stackoverflow.com/questions/4176923/html-of-selected-text
-    // by Tim Down
-    function getSelectionHtml() {
-        var i,
-            html = '',
-            sel,
-            len,
-            container;
-        if (window.getSelection !== undefined) {
-            sel = window.getSelection();
-            if (sel.rangeCount) {
-                container = document.createElement('div');
-                for (i = 0, len = sel.rangeCount; i < len; i += 1) {
-                    container.appendChild(sel.getRangeAt(i).cloneContents());
-                }
-                html = container.innerHTML;
-            }
-        } else if (document.selection !== undefined) {
-            if (document.selection.type === 'Text') {
-                html = document.selection.createRange().htmlText;
-            }
-        }
-        return html;
     }
 
     // https://github.com/jashkenas/underscore
@@ -225,7 +163,7 @@ if (typeof module === 'object') {
         bindParagraphCreation: function (index) {
             var self = this;
             this.elements[index].addEventListener('keypress', function (e) {
-                var node = getSelectionStart(),
+                var node = meditor.selection.getStart(),
                     tagName;
                 if (e.which === 32) {
                     tagName = node.tagName.toLowerCase();
@@ -236,13 +174,13 @@ if (typeof module === 'object') {
             });
 
             this.elements[index].addEventListener('keyup', function (e) {
-                var node = getSelectionStart(),
+                var node = meditor.selection.getStart(),
                     tagName;
                 if (node && node.getAttribute('data-medium-element') && node.children.length === 0 && !(self.options.disableReturn || node.getAttribute('data-disable-return'))) {
                     document.execCommand('formatBlock', false, 'p');
                 }
                 if (e.which === 13) {
-                    node = getSelectionStart();
+                    node = meditor.selection.getStart();
                     tagName = node.tagName.toLowerCase();
                     if (!(self.options.disableReturn || this.getAttribute('data-disable-return')) &&
                         tagName !== 'li' && !self.isListItemChild(node)) {
@@ -282,7 +220,7 @@ if (typeof module === 'object') {
                     if (self.options.disableReturn || this.getAttribute('data-disable-return')) {
                         e.preventDefault();
                     } else if (self.options.disableDoubleReturn || this.getAttribute('data-disable-double-return')) {
-                        var node = getSelectionStart();
+                        var node = meditor.selection.getStart();
                         if (node && node.innerText === '\n') {
                             e.preventDefault();
                         }
@@ -296,7 +234,7 @@ if (typeof module === 'object') {
             this.elements[index].addEventListener('keydown', function (e) {
                 if (e.which === 9) {
                     // Override tab only for pre nodes
-                    var tag = getSelectionStart().tagName.toLowerCase();
+                    var tag = meditor.selection.getStart().tagName.toLowerCase();
                     if (tag === 'pre') {
                         e.preventDefault();
                         document.execCommand('insertHtml', null, '    ');
@@ -513,7 +451,7 @@ if (typeof module === 'object') {
         },
 
         hasMultiParagraphs: function () {
-            var selectionHtml = getSelectionHtml().replace(/<[\S]+><\/[\S]+>/gim, ''),
+            var selectionHtml = meditor.selection.getHTML().replace(/<[\S]+><\/[\S]+>/gim, ''),
                 hasMultiParagraphs = selectionHtml.match(/<(p|h[0-6]|blockquote)>([\s\S]*?)<\/(p|h[0-6]|blockquote)>/g);
 
             return (hasMultiParagraphs ? hasMultiParagraphs.length : 0);
@@ -609,7 +547,7 @@ if (typeof module === 'object') {
 
         checkActiveButtons: function () {
             var elements = Array.prototype.slice.call(this.elements),
-                parentNode = this.getSelectedParentElement();
+                parentNode = meditor.selection.getParentElement(this.selectionRange);
             while (parentNode.tagName !== undefined && this.parentElements.indexOf(parentNode.tagName.toLowerCase) === -1) {
                 this.activateButton(parentNode.tagName.toLowerCase());
                 this.callExtensions('checkState', parentNode);
@@ -678,29 +616,8 @@ if (typeof module === 'object') {
             }
         },
 
-        // http://stackoverflow.com/questions/15867542/range-object-get-selection-parent-node-chrome-vs-firefox
-        rangeSelectsSingleNode: function (range) {
-            var startNode = range.startContainer;
-            return startNode === range.endContainer &&
-                startNode.hasChildNodes() &&
-                range.endOffset === range.startOffset + 1;
-        },
-
-        getSelectedParentElement: function () {
-            var selectedParentElement = null,
-                range = this.selectionRange;
-            if (this.rangeSelectsSingleNode(range)) {
-                selectedParentElement = range.startContainer.childNodes[range.startOffset];
-            } else if (range.startContainer.nodeType === 3) {
-                selectedParentElement = range.startContainer.parentNode;
-            } else {
-                selectedParentElement = range.startContainer;
-            }
-            return selectedParentElement;
-        },
-
         triggerAnchorAction: function () {
-            var selectedParentElement = this.getSelectedParentElement();
+            var selectedParentElement = meditor.selection.getParentElement(this.selectionRange);
             if (selectedParentElement.tagName &&
                     selectedParentElement.tagName.toLowerCase() === 'a') {
                 document.execCommand('unlink', false, null);
@@ -790,7 +707,7 @@ if (typeof module === 'object') {
 
         showAnchorForm: function (link_value) {
             this.toolbarActions.style.display = 'none';
-            this.savedSelection = saveSelection();
+            this.savedSelection = meditor.selection.save();
             this.anchorForm.style.display = 'block';
             this.keepToolbarAlive = true;
             this.anchorInput.focus();
@@ -821,7 +738,7 @@ if (typeof module === 'object') {
             linkCancel.addEventListener('click', function (e) {
                 e.preventDefault();
                 self.showToolbarActions();
-                restoreSelection(self.savedSelection);
+                meditor.selection.restore(self.savedSelection);
             });
             return this;
         },
@@ -1012,7 +929,7 @@ if (typeof module === 'object') {
         },
 
         setTargetBlank: function () {
-            var el = getSelectionStart(),
+            var el = meditor.selection.getStart(),
                 i;
             if (el.tagName.toLowerCase() === 'a') {
                 el.target = '_blank';
@@ -1025,7 +942,7 @@ if (typeof module === 'object') {
         },
 
         createLink: function (input) {
-            restoreSelection(this.savedSelection);
+            meditor.selection.restore(this.savedSelection);
             if (this.options.checkLinkFormat) {
                 input.value = this.checkLinkFormat(input.value);
             }
