@@ -12,61 +12,15 @@ if (typeof module === 'object') {
 (function (window, document) {
     'use strict';
 
-    function extend(b, a) {
-        var prop;
-        if (b === undefined) {
-            return a;
-        }
-        for (prop in a) {
-            if (a.hasOwnProperty(prop) && b.hasOwnProperty(prop) === false) {
-                b[prop] = a[prop];
-            }
-        }
-        return b;
-    }
-
-    // https://github.com/jashkenas/underscore
-    function isElement(obj) {
-        return !!(obj && obj.nodeType === 1);
-    }
-
     MediumEditor.prototype = {
-        defaults: {
-            allowMultiParagraphSelection: true,
-            anchorInputPlaceholder: 'Paste or type a link',
-            anchorPreviewHideDelay: 500,
-            buttons: ['bold', 'italic', 'underline', 'anchor', 'header1', 'header2', 'quote'],
-            buttonLabels: false,
-            checkLinkFormat: false,
-            cleanPastedHTML: false,
-            delay: 0,
-            diffLeft: 0,
-            diffTop: -10,
-            disableReturn: false,
-            disableDoubleReturn: false,
-            disableToolbar: false,
-            disableEditing: false,
-            elementsContainer: false,
-            firstHeader: 'h3',
-            forcePlainText: true,
-            placeholder: 'Type your text',
-            secondHeader: 'h4',
-            targetBlank: false,
-            extensions: {}
-        },
-
-        // http://stackoverflow.com/questions/17907445/how-to-detect-ie11#comment30165888_17907562
-        // by rg89
-        isIE: ((navigator.appName === 'Microsoft Internet Explorer') || ((navigator.appName === 'Netscape') && (new RegExp('Trident/.*rv:([0-9]{1,}[.0-9]{0,})').exec(navigator.userAgent) !== null))),
 
         init: function (elements, options) {
             this.setElementSelection(elements);
             if (this.elements.length === 0) {
                 return;
             }
-            this.parentElements = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre'];
             this.id = document.querySelectorAll('.medium-editor-toolbar').length + 1;
-            this.options = extend(options, this.defaults);
+            this.options = meditor.util.extend(options, meditor.common.defaults);
             return this.setup();
         },
 
@@ -199,7 +153,7 @@ if (typeof module === 'object') {
         isListItemChild: function (node) {
             var parentNode = node.parentNode,
                 tagName = parentNode.tagName.toLowerCase();
-            while (this.parentElements.indexOf(tagName) === -1 && tagName !== 'div') {
+            while (meditor.common.parentElements.indexOf(tagName) === -1 && tagName !== 'div') {
                 if (tagName === 'li') {
                     return true;
                 }
@@ -363,7 +317,7 @@ if (typeof module === 'object') {
 
                 if (btn) {
                     li = document.createElement('li');
-                    if (isElement(btn)) {
+                    if (meditor.util.isElement(btn)) {
                         li.appendChild(btn);
                     } else {
                         li.innerHTML = btn;
@@ -431,7 +385,7 @@ if (typeof module === 'object') {
                     (this.options.allowMultiParagraphSelection === false && this.hasMultiParagraphs())) {
                     this.hideToolbarActions();
                 } else {
-                    selectionElement = this.getSelectionElement();
+                    selectionElement = meditor.selection.getElement();
                     if (!selectionElement || selectionElement.getAttribute('data-disable-toolbar')) {
                         this.hideToolbarActions();
                     } else {
@@ -459,8 +413,7 @@ if (typeof module === 'object') {
 
         checkSelectionElement: function (newSelection, selectionElement) {
             var i;
-            this.selection = newSelection;
-            this.selectionRange = this.selection.getRangeAt(0);
+            meditor.selection.setup(newSelection);
             for (i = 0; i < this.elements.length; i += 1) {
                 if (this.elements[i] === selectionElement) {
                     this.setToolbarButtonStates()
@@ -470,39 +423,6 @@ if (typeof module === 'object') {
                 }
             }
             this.hideToolbarActions();
-        },
-
-        getSelectionElement: function () {
-            var selection = window.getSelection(),
-                range, current, parent,
-                result,
-                getMediumElement = function (e) {
-                    var localParent = e;
-                    try {
-                        while (!localParent.getAttribute('data-medium-element')) {
-                            localParent = localParent.parentNode;
-                        }
-                    } catch (errb) {
-                        return false;
-                    }
-                    return localParent;
-                };
-            // First try on current node
-            try {
-                range = selection.getRangeAt(0);
-                current = range.commonAncestorContainer;
-                parent = current.parentNode;
-
-                if (current.getAttribute('data-medium-element')) {
-                    result = current;
-                } else {
-                    result = getMediumElement(parent);
-                }
-                // If not search in the parent nodes.
-            } catch (err) {
-                result = getMediumElement(parent);
-            }
-            return result;
         },
 
         setToolbarPosition: function () {
@@ -547,8 +467,8 @@ if (typeof module === 'object') {
 
         checkActiveButtons: function () {
             var elements = Array.prototype.slice.call(this.elements),
-                parentNode = meditor.selection.getParentElement(this.selectionRange);
-            while (parentNode.tagName !== undefined && this.parentElements.indexOf(parentNode.tagName.toLowerCase) === -1) {
+                parentNode = meditor.selection.getParentElement();
+            while (parentNode.tagName !== undefined && meditor.common.parentElements.indexOf(parentNode.tagName.toLowerCase) === -1) {
                 this.activateButton(parentNode.tagName.toLowerCase());
                 this.callExtensions('checkState', parentNode);
 
@@ -574,7 +494,7 @@ if (typeof module === 'object') {
                 triggerAction = function (e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (self.selection === undefined) {
+                    if (meditor.selection.object === undefined) {
                         self.checkSelection();
                     }
                     if (this.className.indexOf('medium-editor-button-active') > -1) {
@@ -617,7 +537,7 @@ if (typeof module === 'object') {
         },
 
         triggerAnchorAction: function () {
-            var selectedParentElement = meditor.selection.getParentElement(this.selectionRange);
+            var selectedParentElement = meditor.selection.getParentElement();
             if (selectedParentElement.tagName &&
                     selectedParentElement.tagName.toLowerCase() === 'a') {
                 document.execCommand('unlink', false, null);
@@ -632,7 +552,8 @@ if (typeof module === 'object') {
         },
 
         execFormatBlock: function (el) {
-            var selectionData = this.getSelectionData(this.selection.anchorNode);
+            var selectionData = meditor.selection.serialize();
+
             // FF handles blockquote differently on formatBlock
             // allowing nesting, we need to use outdent
             // https://developer.mozilla.org/en-US/docs/Rich-Text_Editing_in_Mozilla
@@ -647,33 +568,13 @@ if (typeof module === 'object') {
             //  blockquote needs to be called as indent
             // http://stackoverflow.com/questions/10741831/execcommand-formatblock-headings-in-ie
             // http://stackoverflow.com/questions/1816223/rich-text-editor-with-blockquote-function/1821777#1821777
-            if (this.isIE) {
+            if (meditor.common.isIE) {
                 if (el === 'blockquote') {
                     return document.execCommand('indent', false, el);
                 }
                 el = '<' + el + '>';
             }
             return document.execCommand('formatBlock', false, el);
-        },
-
-        getSelectionData: function (el) {
-            var tagName;
-
-            if (el && el.tagName) {
-                tagName = el.tagName.toLowerCase();
-            }
-
-            while (el && this.parentElements.indexOf(tagName) === -1) {
-                el = el.parentNode;
-                if (el && el.tagName) {
-                    tagName = el.tagName.toLowerCase();
-                }
-            }
-
-            return {
-                el: el,
-                tagName: tagName
-            };
         },
 
         getFirstChild: function (el) {
@@ -1086,7 +987,7 @@ if (typeof module === 'object') {
                 tag, and in fact unicode characters *should* be allowed.
             */
             var i, elList, workEl,
-                el = this.getSelectionElement(),
+                el = meditor.selection.getElement(),
                 multiline = /<p|<br|<div/.test(text),
                 replacements = [
 

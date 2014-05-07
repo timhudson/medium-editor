@@ -1,124 +1,39 @@
-var meditor = window.meditor || {};
+var meditor = {};
 
 (function (window, document) {
     'use strict';
 
-    meditor.selection = {
-        // http://stackoverflow.com/questions/5605401/insert-link-in-contenteditable-element
-        // by Tim Down
-        save: function() {
-            var i,
-                len,
-                ranges,
-                sel = window.getSelection();
-            if (sel.getRangeAt && sel.rangeCount) {
-                ranges = [];
-                for (i = 0, len = sel.rangeCount; i < len; i += 1) {
-                    ranges.push(sel.getRangeAt(i));
-                }
-                return ranges;
-            }
-            return null;
-        },
+    meditor.util = {
 
-        restore: function (savedSel) {
-            var i,
-                len,
-                sel = window.getSelection();
-            if (savedSel) {
-                sel.removeAllRanges();
-                for (i = 0, len = savedSel.length; i < len; i += 1) {
-                    sel.addRange(savedSel[i]);
+        extend: function extend(b, a) {
+            var prop;
+            if (b === undefined) {
+                return a;
+            }
+            for (prop in a) {
+                if (a.hasOwnProperty(prop) && b.hasOwnProperty(prop) === false) {
+                    b[prop] = a[prop];
                 }
             }
+            return b;
         },
 
-        // http://stackoverflow.com/questions/1197401/how-can-i-get-the-element-the-caret-is-in-with-javascript-when-using-contentedi
-        // by You
-        getStart: function() {
-            var node = document.getSelection().anchorNode,
-                startNode = (node && node.nodeType === 3 ? node.parentNode : node);
-            return startNode;
-
-        // http://stackoverflow.com/questions/4176923/html-of-selected-text
-        },
-        // by Tim Down
-        getHTML: function() {
-            var i,
-                html = '',
-                sel,
-                len,
-                container;
-            if (window.getSelection !== undefined) {
-                sel = window.getSelection();
-                if (sel.rangeCount) {
-                    container = document.createElement('div');
-                    for (i = 0, len = sel.rangeCount; i < len; i += 1) {
-                        container.appendChild(sel.getRangeAt(i).cloneContents());
-                    }
-                    html = container.innerHTML;
-                }
-            } else if (document.selection !== undefined) {
-                if (document.selection.type === 'Text') {
-                    html = document.selection.createRange().htmlText;
-                }
-            }
-            return html;
-        },
-
-        // http://stackoverflow.com/questions/15867542/range-object-get-selection-parent-node-chrome-vs-firefox
-        rangeSelectsSingleNode: function (range) {
-            var startNode = range.startContainer;
-            return startNode === range.endContainer &&
-                startNode.hasChildNodes() &&
-                range.endOffset === range.startOffset + 1;
-        },
-
-        getParentElement: function (range) {
-            var selectedParentElement = null;
-            if (this.rangeSelectsSingleNode(range)) {
-                selectedParentElement = range.startContainer.childNodes[range.startOffset];
-            } else if (range.startContainer.nodeType === 3) {
-                selectedParentElement = range.startContainer.parentNode;
-            } else {
-                selectedParentElement = range.startContainer;
-            }
-            return selectedParentElement;
+        // https://github.com/jashkenas/underscore
+        isElement: function isElement(obj) {
+            return !!(obj && obj.nodeType === 1);
         }
+
     };
+
 }(window, document));
 
-function MediumEditor(elements, options) {
-    'use strict';
-    return this.init(elements, options);
-}
-
-if (typeof module === 'object') {
-    module.exports = MediumEditor;
-}
-
 (function (window, document) {
     'use strict';
 
-    function extend(b, a) {
-        var prop;
-        if (b === undefined) {
-            return a;
-        }
-        for (prop in a) {
-            if (a.hasOwnProperty(prop) && b.hasOwnProperty(prop) === false) {
-                b[prop] = a[prop];
-            }
-        }
-        return b;
-    }
+    meditor.common = {
 
-    // https://github.com/jashkenas/underscore
-    function isElement(obj) {
-        return !!(obj && obj.nodeType === 1);
-    }
+        parentElements: ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre'],
 
-    MediumEditor.prototype = {
         defaults: {
             allowMultiParagraphSelection: true,
             anchorInputPlaceholder: 'Paste or type a link',
@@ -145,16 +60,188 @@ if (typeof module === 'object') {
 
         // http://stackoverflow.com/questions/17907445/how-to-detect-ie11#comment30165888_17907562
         // by rg89
-        isIE: ((navigator.appName === 'Microsoft Internet Explorer') || ((navigator.appName === 'Netscape') && (new RegExp('Trident/.*rv:([0-9]{1,}[.0-9]{0,})').exec(navigator.userAgent) !== null))),
+        isIE: ((navigator.appName === 'Microsoft Internet Explorer') || ((navigator.appName === 'Netscape') && (new RegExp('Trident/.*rv:([0-9]{1,}[.0-9]{0,})').exec(navigator.userAgent) !== null)))
+
+    };
+
+}(window, document));
+
+(function (window, document) {
+    'use strict';
+
+    meditor.selection = {
+
+        init: function init() {
+            this.object = window.getSelection();
+        },
+
+        setup: function setUp(newSelection) {
+            this.object = newSelection;
+            this.selectionRange = this.object.getRangeAt(0);
+        },
+
+        // http://stackoverflow.com/questions/5605401/insert-link-in-contenteditable-element
+        // by Tim Down
+        save: function save() {
+            var i,
+                len,
+                ranges,
+                sel = window.getSelection();
+            if (sel.getRangeAt && sel.rangeCount) {
+                ranges = [];
+                for (i = 0, len = sel.rangeCount; i < len; i += 1) {
+                    ranges.push(sel.getRangeAt(i));
+                }
+                return ranges;
+            }
+            return null;
+        },
+
+        restore: function restore(savedSel) {
+            var i,
+                len,
+                sel = window.getSelection();
+            if (savedSel) {
+                sel.removeAllRanges();
+                for (i = 0, len = savedSel.length; i < len; i += 1) {
+                    sel.addRange(savedSel[i]);
+                }
+            }
+        },
+
+        // http://stackoverflow.com/questions/1197401/how-can-i-get-the-element-the-caret-is-in-with-javascript-when-using-contentedi
+        // by You
+        getStart: function getStart() {
+            var node = document.getSelection().anchorNode,
+                startNode = (node && node.nodeType === 3 ? node.parentNode : node);
+            return startNode;
+
+        },
+
+        // http://stackoverflow.com/questions/4176923/html-of-selected-text
+        // by Tim Down
+        getHTML: function getHTML() {
+            var i,
+                html = '',
+                sel,
+                len,
+                container;
+            if (window.getSelection !== undefined) {
+                sel = window.getSelection();
+                if (sel.rangeCount) {
+                    container = document.createElement('div');
+                    for (i = 0, len = sel.rangeCount; i < len; i += 1) {
+                        container.appendChild(sel.getRangeAt(i).cloneContents());
+                    }
+                    html = container.innerHTML;
+                }
+            } else if (document.selection !== undefined) {
+                if (document.selection.type === 'Text') {
+                    html = document.selection.createRange().htmlText;
+                }
+            }
+            return html;
+        },
+
+        serialize: function serialize() {
+            var tagName,
+                el = this.object.anchorNode;
+
+            if (el && el.tagName) {
+                tagName = el.tagName.toLowerCase();
+            }
+
+            while (el && meditor.common.parentElements.indexOf(tagName) === -1) {
+                el = el.parentNode;
+                if (el && el.tagName) {
+                    tagName = el.tagName.toLowerCase();
+                }
+            }
+
+            return {
+                el: el,
+                tagName: tagName
+            };
+        },
+
+
+
+        getElement: function getElement() {
+            var selection = window.getSelection(),
+                range, current, parent,
+                result,
+                getMediumElement = function (e) {
+                    var localParent = e;
+                    try {
+                        while (!localParent.getAttribute('data-medium-element')) {
+                            localParent = localParent.parentNode;
+                        }
+                    } catch (errb) {
+                        return false;
+                    }
+                    return localParent;
+                };
+            // First try on current node
+            try {
+                range = selection.getRangeAt(0);
+                current = range.commonAncestorContainer;
+                parent = current.parentNode;
+
+                if (current.getAttribute('data-medium-element')) {
+                    result = current;
+                } else {
+                    result = getMediumElement(parent);
+                }
+                // If not search in the parent nodes.
+            } catch (err) {
+                result = getMediumElement(parent);
+            }
+            return result;
+        },
+
+        // http://stackoverflow.com/questions/15867542/range-object-get-selection-parent-node-chrome-vs-firefox
+        isSingleNode: function rangeSingleNode() {
+            var startNode = this.selectionRange.startContainer;
+            return startNode === this.selectionRange.endContainer &&
+                startNode.hasChildNodes() &&
+                this.selectionRange.endOffset === this.selectionRange.startOffset + 1;
+        },
+
+        getParentElement: function () {
+            var selectedParentElement = null;
+            if (this.isSingleNode()) {
+                selectedParentElement = this.selectionRange.startContainer.childNodes[this.selectionRange.startOffset];
+            } else if (this.selectionRange.startContainer.nodeType === 3) {
+                selectedParentElement = this.selectionRange.startContainer.parentNode;
+            } else {
+                selectedParentElement = this.selectionRange.startContainer;
+            }
+            return selectedParentElement;
+        }
+    };
+}(window, document));
+
+function MediumEditor(elements, options) {
+    'use strict';
+    return this.init(elements, options);
+}
+
+if (typeof module === 'object') {
+    module.exports = MediumEditor;
+}
+
+(function (window, document) {
+    'use strict';
+
+    MediumEditor.prototype = {
 
         init: function (elements, options) {
             this.setElementSelection(elements);
             if (this.elements.length === 0) {
                 return;
             }
-            this.parentElements = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre'];
             this.id = document.querySelectorAll('.medium-editor-toolbar').length + 1;
-            this.options = extend(options, this.defaults);
+            this.options = meditor.util.extend(options, meditor.common.defaults);
             return this.setup();
         },
 
@@ -287,7 +374,7 @@ if (typeof module === 'object') {
         isListItemChild: function (node) {
             var parentNode = node.parentNode,
                 tagName = parentNode.tagName.toLowerCase();
-            while (this.parentElements.indexOf(tagName) === -1 && tagName !== 'div') {
+            while (meditor.common.parentElements.indexOf(tagName) === -1 && tagName !== 'div') {
                 if (tagName === 'li') {
                     return true;
                 }
@@ -451,7 +538,7 @@ if (typeof module === 'object') {
 
                 if (btn) {
                     li = document.createElement('li');
-                    if (isElement(btn)) {
+                    if (meditor.util.isElement(btn)) {
                         li.appendChild(btn);
                     } else {
                         li.innerHTML = btn;
@@ -519,7 +606,7 @@ if (typeof module === 'object') {
                     (this.options.allowMultiParagraphSelection === false && this.hasMultiParagraphs())) {
                     this.hideToolbarActions();
                 } else {
-                    selectionElement = this.getSelectionElement();
+                    selectionElement = meditor.selection.getElement();
                     if (!selectionElement || selectionElement.getAttribute('data-disable-toolbar')) {
                         this.hideToolbarActions();
                     } else {
@@ -547,8 +634,7 @@ if (typeof module === 'object') {
 
         checkSelectionElement: function (newSelection, selectionElement) {
             var i;
-            this.selection = newSelection;
-            this.selectionRange = this.selection.getRangeAt(0);
+            meditor.selection.setup(newSelection);
             for (i = 0; i < this.elements.length; i += 1) {
                 if (this.elements[i] === selectionElement) {
                     this.setToolbarButtonStates()
@@ -558,39 +644,6 @@ if (typeof module === 'object') {
                 }
             }
             this.hideToolbarActions();
-        },
-
-        getSelectionElement: function () {
-            var selection = window.getSelection(),
-                range, current, parent,
-                result,
-                getMediumElement = function (e) {
-                    var localParent = e;
-                    try {
-                        while (!localParent.getAttribute('data-medium-element')) {
-                            localParent = localParent.parentNode;
-                        }
-                    } catch (errb) {
-                        return false;
-                    }
-                    return localParent;
-                };
-            // First try on current node
-            try {
-                range = selection.getRangeAt(0);
-                current = range.commonAncestorContainer;
-                parent = current.parentNode;
-
-                if (current.getAttribute('data-medium-element')) {
-                    result = current;
-                } else {
-                    result = getMediumElement(parent);
-                }
-                // If not search in the parent nodes.
-            } catch (err) {
-                result = getMediumElement(parent);
-            }
-            return result;
         },
 
         setToolbarPosition: function () {
@@ -635,8 +688,8 @@ if (typeof module === 'object') {
 
         checkActiveButtons: function () {
             var elements = Array.prototype.slice.call(this.elements),
-                parentNode = meditor.selection.getParentElement(this.selectionRange);
-            while (parentNode.tagName !== undefined && this.parentElements.indexOf(parentNode.tagName.toLowerCase) === -1) {
+                parentNode = meditor.selection.getParentElement();
+            while (parentNode.tagName !== undefined && meditor.common.parentElements.indexOf(parentNode.tagName.toLowerCase) === -1) {
                 this.activateButton(parentNode.tagName.toLowerCase());
                 this.callExtensions('checkState', parentNode);
 
@@ -662,7 +715,7 @@ if (typeof module === 'object') {
                 triggerAction = function (e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (self.selection === undefined) {
+                    if (meditor.selection.object === undefined) {
                         self.checkSelection();
                     }
                     if (this.className.indexOf('medium-editor-button-active') > -1) {
@@ -705,7 +758,7 @@ if (typeof module === 'object') {
         },
 
         triggerAnchorAction: function () {
-            var selectedParentElement = meditor.selection.getParentElement(this.selectionRange);
+            var selectedParentElement = meditor.selection.getParentElement();
             if (selectedParentElement.tagName &&
                     selectedParentElement.tagName.toLowerCase() === 'a') {
                 document.execCommand('unlink', false, null);
@@ -720,7 +773,8 @@ if (typeof module === 'object') {
         },
 
         execFormatBlock: function (el) {
-            var selectionData = this.getSelectionData(this.selection.anchorNode);
+            var selectionData = meditor.selection.serialize();
+
             // FF handles blockquote differently on formatBlock
             // allowing nesting, we need to use outdent
             // https://developer.mozilla.org/en-US/docs/Rich-Text_Editing_in_Mozilla
@@ -735,33 +789,13 @@ if (typeof module === 'object') {
             //  blockquote needs to be called as indent
             // http://stackoverflow.com/questions/10741831/execcommand-formatblock-headings-in-ie
             // http://stackoverflow.com/questions/1816223/rich-text-editor-with-blockquote-function/1821777#1821777
-            if (this.isIE) {
+            if (meditor.common.isIE) {
                 if (el === 'blockquote') {
                     return document.execCommand('indent', false, el);
                 }
                 el = '<' + el + '>';
             }
             return document.execCommand('formatBlock', false, el);
-        },
-
-        getSelectionData: function (el) {
-            var tagName;
-
-            if (el && el.tagName) {
-                tagName = el.tagName.toLowerCase();
-            }
-
-            while (el && this.parentElements.indexOf(tagName) === -1) {
-                el = el.parentNode;
-                if (el && el.tagName) {
-                    tagName = el.tagName.toLowerCase();
-                }
-            }
-
-            return {
-                el: el,
-                tagName: tagName
-            };
         },
 
         getFirstChild: function (el) {
@@ -1174,7 +1208,7 @@ if (typeof module === 'object') {
                 tag, and in fact unicode characters *should* be allowed.
             */
             var i, elList, workEl,
-                el = this.getSelectionElement(),
+                el = meditor.selection.getElement(),
                 multiline = /<p|<br|<div/.test(text),
                 replacements = [
 

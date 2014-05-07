@@ -12,7 +12,10 @@ module.exports = function (grunt) {
             pkg: grunt.file.readJSON('package.json'),
             globalConfig: globalConfig
         },
-        jsFiles = ['src/js/selection.js',
+        jsFiles = ['src/js/init.js',
+                   'src/js/util.js',
+                   'src/js/common.js',
+                   'src/js/selection.js',
                    'src/js/core.js'];
 
     gruntConfig.jslint = {
@@ -30,7 +33,7 @@ module.exports = function (grunt) {
 
     gruntConfig.jasmine = {
         suite: {
-            src: 'src/js/**/*.js',
+            src: jsFiles,
             options: {
                 specs: 'spec/*.spec.js',
                 helpers: 'spec/helpers/*.js',
@@ -49,7 +52,7 @@ module.exports = function (grunt) {
             }
         },
         spec: {
-            src: 'src/js/**/*.js',
+            src: jsFiles,
             options: {
                 specs: ['spec/<%= globalConfig.file %>.spec.js'],
                 helpers: 'spec/helpers/*.js'
