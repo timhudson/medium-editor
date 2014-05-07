@@ -5,10 +5,6 @@
 
     meditor.selection = {
 
-        init: function init() {
-            this.object = window.getSelection();
-        },
-
         setup: function setUp(newSelection) {
             this.object = newSelection;
             this.selectionRange = this.object.getRangeAt(0);
