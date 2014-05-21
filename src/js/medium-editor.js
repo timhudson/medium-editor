@@ -247,7 +247,7 @@ if (typeof module === 'object') {
                 if (e.which === 13) {
                     node = getSelectionStart();
                     tagName = node.tagName.toLowerCase();
-                    if (!(self.options.disableReturn || this.getAttribute('data-disable-return')) &&
+                    if (!(self.options.doubleReturn || self.options.disableReturn || this.getAttribute('data-disable-return')) &&
                         tagName !== 'li' && !self.isListItemChild(node)) {
                         if (!e.shiftKey) {
                             document.execCommand('formatBlock', false, 'p');
@@ -279,13 +279,21 @@ if (typeof module === 'object') {
         },
 
         bindReturn: function (index) {
-            var self = this;
+            var self = this,
+                node;
             this.elements[index].addEventListener('keypress', function (e) {
                 if (e.which === 13) {
                     if (self.options.disableReturn || this.getAttribute('data-disable-return')) {
                         e.preventDefault();
+                    } else if (self.options.doubleReturn) {
+                        node = getSelectionStart();
+                        if (node && node.innerText === '\n') {
+                            document.execCommand('insertHorizontalRule');
+                            document.execCommand('insertHTML', null, '<p><br /></p>');
+                            e.preventDefault();
+                        }
                     } else if (self.options.disableDoubleReturn || this.getAttribute('data-disable-double-return')) {
-                        var node = getSelectionStart();
+                        node = getSelectionStart();
                         if (node && node.innerText === '\n') {
                             e.preventDefault();
                         }
